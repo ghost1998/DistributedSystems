@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package solver;
+
+service Calculate
+{
+	// Sends an expression to calculate
+	rpc Evaluate(Expression) returns(Result) {}
+}
+
+message Expression
+{
+	string infix = 1;
+}
+
+message Result
+{
+	string result = 1;
+}
