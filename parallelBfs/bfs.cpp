@@ -38,9 +38,20 @@ char processor_name[MPI_MAX_PROCESSOR_NAME];
 int name_len;
 ll n , e;
 
-int adjMat[20][500][500];
-vi adjList[25][500];
-vi verticesList[25];
+int adjMat[500][500];
+vi adjList[500];
+vi verticesList;
+
+int level[500];
+int getlevel[500][500];
+int sendFrontier[500];
+int getFrontier[500];
+
+int totalEdge1[1000];
+int totalEdge2[1000];
+
+int edge1[1000];
+int edge2[1000];
 
 void init()
 {
@@ -63,6 +74,45 @@ void getunique(vi &v)
 	v.resize(std::distance(v.begin(), ip)); 
 }
 
+void shout()
+{
+	printf("Hello world from processor %s, rank %d out of %d processors\n", processor_name, world_rank, world_size);
+	return ;
+}
+
+void bfs(int source)
+{
+
+
+
+	MPI_Barrier(MPI_COMM_WORLD);
+	cout<<source<<endl;
+
+
+	if(world_rank==0) level[source] = 0;
+
+	rep(i, n)
+	{
+		vi frontier;
+
+		MPI_Allgather(level, n+1, MPI_INT, (&getlevel)[500][500], n+1, MPI_INT, MPI_COMM_WORLD);
+
+
+		repn(j, n) repn(k, n)
+		{
+			if(getlevel[j][k] == i)
+			{
+				// cout<<i<<" "<<j<<" "<<k<<endl;
+			}
+
+
+		}
+
+		if(frontier.size() == 0) return;
+
+	}
+	return;
+}
 int main(int argc, char** argv)
 {
 	fastio;
@@ -84,34 +134,79 @@ int main(int argc, char** argv)
 			ll t1, t2;
 			cin>>t1>>t2;
 			// cout<<i<<endl;
-			// cout<<t1<<" "<<t2<<endl;
+			// cout<<"inp : "<<t1<<" "<<t2<<endl;
 
-			adjMat[(i%world_size)][t1][t2] = 1;
-			adjMat[(i%world_size)][t2][t1] = 1;
+			totalEdge1[i] = t1;
+			totalEdge2[i] = t2;
 
-			adjList[(i%world_size)][t1].pb(t2);
-			adjList[(i%world_size)][t2].pb(t1);
+			// adjMat[(i%world_size)][t1][t2] = 1;
+			// adjMat[(i%world_size)][t2][t1] = 1;
 
-			verticesList[(i%world_size)].pb(t1);
-			verticesList[(i%world_size)].pb(t2);
+			// adjList[(i%world_size)][t1].pb(t2);
+			// adjList[(i%world_size)][t2].pb(t1);
+
+			// verticesList[(i%world_size)].pb(t1);
+			// verticesList[(i%world_size)].pb(t2);
 		}
 
-		rep(i, world_size)
-		{
-			getunique(verticesList[(i%world_size)]);
+		// MPI_Scatter(&totalEdge1, (e/world_size), MPI_INT, &edge1, (e/world_size), MPI_INT, 0, MPI_COMM_WORLD);
+		// MPI_Scatter(&totalEdge2, (e/world_size), MPI_INT, &edge2, (e/world_size), MPI_INT, 0, MPI_COMM_WORLD);
 
-			/* cout<<"Process No. " << i<<" : "<<endl;
-			repn(j, n)
-			{
-				repn(k, n) cout<<adjMat[i][j][k]<< " ";
-				cout<<endl;
-			}
+			
 
-			rep(j, verticesList[(i%world_size)].size()) cout<<verticesList[(i%world_size)][j]<<" ";
-			cout<<endl;*/
+	}
 
-		}
 
+
+	e = 12;
+	n = 16;
+
+	// cout<<(e/world_size)<<endl;
+
+	MPI_Scatter(totalEdge1, (e/world_size), MPI_INT, edge1, (e/world_size), MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Scatter(totalEdge2, (e/world_size), MPI_INT, edge2, (e/world_size), MPI_INT, 0, MPI_COMM_WORLD);
+
+
+	rep(i, (e/world_size))
+	{
+		ll t1, t2;
+		t1 = edge1[i];
+		t2 = edge2[i];
+
+		// cout<<"local : "<<world_rank<<" "<<t1<<" "<<t2<<endl;
+
+		adjMat[t1][t2] = 1;
+		adjMat[t2][t1] = 1;
+		adjList[t1].pb(t2);
+		adjList[t2].pb(t1);
+		verticesList.pb(t1);
+		verticesList.pb(t2);
+	}
+
+	getunique(verticesList);
+
+	// cout<<"Process No. " << world_rank<<" : "<<endl;
+
+	// repn(j, n)
+	// {
+	// 	repn(k, n) cout<<adjMat[j][k]<< " ";
+	// 	cout<<endl;
+	// }
+
+
+	// cout<<world_rank<<" : ";
+	// rep(j, verticesList.size()) cout<<verticesList[j]<<" ";
+	// cout<<endl;
+
+
+
+	rep(i, 500) level[i] = INT_MAX;
+	
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	repn(i, n)
+	{
+		if(level[i] == INT_MAX) bfs(i);
 	}
 
 
