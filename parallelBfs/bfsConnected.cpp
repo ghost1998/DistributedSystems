@@ -41,6 +41,7 @@ ll n , e;
 int adjMat[500][500];
 vi adjList[500];
 vi verticesList;
+int verticesBool[500];
 
 int level[500];
 int getlevel[500][500];
@@ -89,28 +90,110 @@ void bfs(int source)
 	cout<<source<<endl;
 
 
-	if(world_rank==0) level[source] = 0;
+	
 
-	rep(i, n)
+	FOR(l, 1, n)
 	{
 		vi frontier;
 
-		MPI_Allgather(level, n+1, MPI_INT, (&getlevel)[0][0], n+1, MPI_INT, MPI_COMM_WORLD);
+		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_Allgather(&level[0], 500, MPI_INT, (&getlevel)[0][0], 500, MPI_INT, MPI_COMM_WORLD);
+		MPI_Barrier(MPI_COMM_WORLD);
 
-
-		repn(j, n) repn(k, n)
+		/*if( world_rank == 0) rep(j, world_size)
 		{
-			if(getlevel[j][k] == i)
+			repn(k, n)
 			{
-				// cout<<i<<" "<<j<<" "<<k<<endl;
+				cout<<getlevel[j][k]<<" ";
 			}
+			cout<<endl;
+		}*/
+
+		// return;
 
 
+		rep(j, world_size) repn(k, n)
+		{
+			if(getlevel[j][k] == l)
+			{
+				// cout<<j<<" "<<k<<endl;
+				frontier.pb(k);
+			}
 		}
+
+		MPI_Barrier(MPI_COMM_WORLD);
 
 		if(frontier.size() == 0) return;
 
+		getunique(frontier);
+
+		MPI_Barrier(MPI_COMM_WORLD);
+
+		cout<<"F size : "<<frontier.size()<<" "<<world_rank<<endl;	
+		cout<<"Frontier : "<<world_rank<<" : "; rep(i, frontier.size()) cout<<frontier[i]<<" "; cout<<endl;
+
+		MPI_Barrier(MPI_COMM_WORLD); 
+		int neighbours[500]; rep(i, 500) neighbours[i] = 0;
+		int globalNeighbours[500][500]; rep(i, 500) rep(j, 500) globalNeighbours[i][j] = 0;
+
+		rep(i, frontier.size())  //for every element in the frontier
+		{
+			rep(j, adjList[frontier[i]].size()) 
+			{
+				cout<<"Here"<<endl;
+				cout<<"Debug 2 : " << world_rank<<" " << frontier[i] << " "<<adjList[frontier[i]][j]<<endl;
+				neighbours[adjList[frontier[i]][j]] = 1;
+			}
+		}
+
+		MPI_Barrier(MPI_COMM_WORLD);
+		cout<<"Local for process "<<world_rank<<" : \n";
+		repn(i, n) cout<<neighbours[i]<<" "; cout<<endl;
+
+		
+		MPI_Barrier(MPI_COMM_WORLD);
+		// (&globalNeighbours)[0][0]
+		MPI_Allgather((&neighbours)[0], 500, MPI_INT, (&globalNeighbours)[0][0], 500, MPI_INT, MPI_COMM_WORLD);
+		MPI_Barrier(MPI_COMM_WORLD);
+
+		cout<<"Global for process "<<world_rank<<" : \n";
+		rep(i , world_size)
+		{
+			cout<<world_rank<< " -> " << i<<" : " ; repn(j, n) cout<<globalNeighbours[i][j]<<" ";
+			// repn(j, n) cout<<globalNeighbours[500*i + j]<<" ";
+			cout<<endl;
+		}
+
+		MPI_Barrier(MPI_COMM_WORLD);
+
+
+		rep(i, world_size) rep(j, 500) if(globalNeighbours[i][j] == 1) neighbours[j] = 1;
+
+		MPI_Barrier(MPI_COMM_WORLD);
+
+		cout<<"Neighbours : "<<world_rank<<" : "; rep(i, n+1) if(neighbours[i] == 1) cout<<i<<" "; cout<<endl;
+
+		repn(i, n) if(neighbours[i]==1 && verticesBool[i]==1 && level[i] == INT_MAX) 
+		{
+			level[i] = l+1 ; 
+			cout<<"Depth : "<<i<<" "<<level[i]<<" "<<world_rank<<endl;
+		}
+
+		MPI_Barrier(MPI_COMM_WORLD);
+
+		// MPI_Barrier(MPI_COMM_WORLD);
+			// if(world_rank == 0) cout<<frontier.size()<<endl;
+
+
+				// if(frontier.size() == 0) return;
+
+
 	}
+
+	if(world_rank == 0) cout<<"---------------------------------------"<<endl;
+
+	// MPI_Barrier(MPI_COMM_WORLD);
+
 	return;
 }
 int main(int argc, char** argv)
@@ -181,6 +264,8 @@ int main(int argc, char** argv)
 		adjList[t2].pb(t1);
 		verticesList.pb(t1);
 		verticesList.pb(t2);
+		verticesBool[t1] = 1;
+		verticesBool[t2] = 1;
 	}
 
 	getunique(verticesList);
@@ -194,11 +279,13 @@ int main(int argc, char** argv)
 	// }
 
 
-	// cout<<world_rank<<" : ";
+	cout<<world_rank<<" : ";
+	repn(i, n) if(verticesBool[i] == 1) cout<<i<<" ";
 	// rep(j, verticesList.size()) cout<<verticesList[j]<<" ";
-	// cout<<endl;
+	cout<<endl;
 
 
+	if(world_rank==0) repn(i, n) verticesBool[i] = 1;
 
 	rep(i, 500) level[i] = INT_MAX;
 	
@@ -206,7 +293,18 @@ int main(int argc, char** argv)
 
 	repn(i, n)
 	{
-		if(level[i] == INT_MAX) bfs(i);
+		if(level[i] == INT_MAX && verticesBool[i] == 1) 
+		{
+			cout<<"Debug : "<<world_rank<<" "<<i<<endl;
+			if(world_rank==0) 
+			{
+				rep(i, 500) level[i] = INT_MAX;
+				level[i] = 1; 
+				cout<<"Depth : "<<i<<" "<<level[i]<<" "<<world_rank<<endl;
+			}
+			bfs(i);
+			break;
+		}
 	}
 
 
