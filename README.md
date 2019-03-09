@@ -1,18 +1,38 @@
-# DistributedSystems
-Distributed Systems Projects
+# Distributed Systems Projects
+
+## gRPC Calculator 
 
 
-Comlmands for gRPC:
+Commands to compile form scratch : 
 
-Make :
-make clean
+```
+protoc -I . --grpc_out=. --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` ./services.proto
+protoc -I . --cpp_out=. ./services.proto
 make
+```
 
-Server : ./evaluator_server 
-Client : ./evaluator_client
+Start the server 
+```
+/evaluator_server 
+```
+
+Start the client
+```
+/evaluator_client
+```
+
+Enter the space seperated infix expression to be evaluated
+
+## Parallel BFS with Edge Partitioning
 
 
-
-Comlmands for Distributed bfs : 
+Compile :
+```
 mpic++ -o bfs bfs.cpp 
-mpirun --hostfile hostfile -np 4 bfs < inputfile
+```
+
+
+Run : 
+```
+mpirun --hostfile hostfile -np <number of processors> bfs <  <inputfilename> 
+```
